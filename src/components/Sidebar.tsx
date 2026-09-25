@@ -120,7 +120,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm(`Are you sure you want to delete subject "${cat.name}"?`)) {
+                      const confirmMsg = count > 0
+                        ? `Are you sure you want to delete subject "${cat.name}"?\nThis will also delete all ${count} bookmark(s) inside it.`
+                        : `Are you sure you want to delete subject "${cat.name}"?`;
+                      if (confirm(confirmMsg)) {
                         onDeleteCategory(cat.id!);
                       }
                     }}

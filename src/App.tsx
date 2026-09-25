@@ -104,7 +104,10 @@ export function App() {
   const handleDeleteCategory = async (id: number) => {
     const cat = await db.categories.get(id);
     if (cat) {
-      await db.categories.delete(id);
+      await db.transaction('rw', db.categories, db.bookmarks, async () => {
+        await db.bookmarks.where('categorySlug').equals(cat.slug).delete();
+        await db.categories.delete(id);
+      });
       if (activeCategorySlug === cat.slug) {
         setActiveCategorySlug('all');
       }
