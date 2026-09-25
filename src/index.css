@@ -1,0 +1,179 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+:root {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: dark;
+
+  /* Default Dark Mode Custom Properties */
+  --bg-main: #090d16;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --panel-bg: rgba(15, 23, 42, 0.65);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --card-bg: rgba(30, 41, 59, 0.4);
+  --card-bg-hover: rgba(30, 41, 59, 0.75);
+  --card-border: rgba(255, 255, 255, 0.07);
+  --input-bg: rgba(15, 23, 42, 0.6);
+  --input-border: rgba(255, 255, 255, 0.1);
+  --modal-overlay: rgba(2, 6, 23, 0.85);
+  --modal-bg: rgba(15, 23, 42, 0.95);
+  --sub-box-bg: rgba(15, 23, 42, 0.8);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+}
+
+.light {
+  color-scheme: light;
+
+  /* Soft Slate Premium Light Mode (Eye-friendly & Elegant) */
+  --bg-main: #e2e8f0;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --panel-bg: rgba(255, 255, 255, 0.85);
+  --panel-border: rgba(148, 163, 184, 0.4);
+  --panel-shadow: 0 10px 30px -10px rgba(71, 85, 105, 0.15);
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --card-bg-hover: #ffffff;
+  --card-border: rgba(203, 213, 225, 0.9);
+  --input-bg: rgba(248, 250, 252, 0.95);
+  --input-border: rgba(148, 163, 184, 0.5);
+  --modal-overlay: rgba(15, 23, 42, 0.5);
+  --modal-bg: #ffffff;
+  --sub-box-bg: #f1f5f9;
+  --border-subtle: rgba(203, 213, 225, 1);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Custom Glassmorphism Utility */
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--panel-shadow);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.glass-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  background: var(--card-bg-hover);
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 12px 30px -10px rgba(99, 102, 241, 0.2);
+  transform: translateY(-2px);
+}
+
+.glass-input {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-main);
+  transition: all 0.2s ease;
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+/* Light Mode Overrides for Crisp Contrast & Readability */
+.light .text-white {
+  color: #0f172a !important;
+}
+
+.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+.light .text-slate-400 {
+  color: #475569 !important;
+}
+
+.light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+.light .bg-slate-800,
+.light .bg-slate-800\/80,
+.light .bg-slate-800\/60,
+.light .bg-slate-800\/50 {
+  background-color: #e2e8f0 !important;
+}
+
+.light .bg-slate-900,
+.light .bg-slate-900\/80,
+.light .bg-slate-900\/60,
+.light .bg-slate-900\/40 {
+  background-color: #f1f5f9 !important;
+}
+
+.light .bg-slate-950,
+.light .bg-slate-950\/80 {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+}
+
+.light .border-slate-800,
+.light .border-slate-800\/80,
+.light .border-slate-700,
+.light .border-slate-700\/80 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Modals in light mode */
+.light .glass-panel.rounded-2xl {
+  background-color: var(--modal-bg) !important;
+}
+
+/* Glowing text gradients */
+.gradient-text-primary {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-text-cyan {
+  background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.7);
+}
