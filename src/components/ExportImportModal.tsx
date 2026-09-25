@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { exportUserDataJSON, downloadJSONFile, importUserDataJSON } from '../utils/exportImport';
-import { X, Download, Upload, CheckCircle, AlertCircle, FileJson } from 'lucide-react';
+import { exportUserDataJSON, downloadJSONFile, importUserData } from '../utils/exportImport';
+import { X, Download, Upload, CheckCircle, AlertCircle, FileCode } from 'lucide-react';
 
 interface ExportImportModalProps {
   isOpen: boolean;
@@ -40,10 +40,10 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
     reader.onload = async (event) => {
       try {
         const content = event.target?.result as string;
-        const result = await importUserDataJSON(content);
+        const result = await importUserData(content, file.name);
         setStatusMessage({
           type: 'success',
-          text: `Import successful! Imported ${result.bookmarksImported} bookmarks and ${result.categoriesImported} new subjects.`,
+          text: `Import successful! Added ${result.bookmarksImported} bookmarks and ${result.categoriesImported} new categories.`,
         });
         onDataImported();
       } catch (err: unknown) {
@@ -62,11 +62,11 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-              <FileJson className="w-5 h-5 text-white" />
+              <FileCode className="w-5 h-5 text-white" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Backup & Restore</h2>
-              <p className="text-xs text-slate-400">Export or import JSON data files</p>
+              <p className="text-xs text-slate-400">Import/export JSON backups or HTML bookmarks</p>
             </div>
           </div>
           <button
@@ -99,7 +99,7 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
           <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
             <div>
               <h3 className="text-xs font-bold text-white mb-0.5">Export Backup (JSON)</h3>
-              <p className="text-[11px] text-slate-400">Save all subjects and bookmarks locally</p>
+              <p className="text-[11px] text-slate-400">Save all categories and bookmarks</p>
             </div>
             <button
               onClick={handleExport}
@@ -113,15 +113,15 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
           {/* Import Option */}
           <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
             <div>
-              <h3 className="text-xs font-bold text-white mb-0.5">Import Backup (JSON)</h3>
-              <p className="text-[11px] text-slate-400">Restore bookmarks from JSON file</p>
+              <h3 className="text-xs font-bold text-white mb-0.5">Import Bookmarks</h3>
+              <p className="text-[11px] text-slate-400">Supports JSON backup or HTML browser exports</p>
             </div>
             <label className="px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/30 flex items-center gap-1.5 cursor-pointer">
               <Upload className="w-3.5 h-3.5" />
               <span>{isImporting ? 'Importing...' : 'Select File'}</span>
               <input
                 type="file"
-                accept=".json"
+                accept=".json, .html, .htm"
                 onChange={handleFileUpload}
                 disabled={isImporting}
                 className="hidden"

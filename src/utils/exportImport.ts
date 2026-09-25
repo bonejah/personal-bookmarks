@@ -1,5 +1,6 @@
 import { db } from '../db/database';
 import type { Bookmark, Category } from '../types/bookmark';
+import { parseHTMLBookmarks } from './htmlBookmarkParser';
 
 export interface BackupData {
   version: number;
@@ -34,11 +35,28 @@ export function downloadJSONFile(jsonContent: string, filename = 'personal-bookm
   URL.revokeObjectURL(url);
 }
 
-export async function importUserDataJSON(jsonString: string): Promise<{ categoriesImported: number; bookmarksImported: number }> {
-  const data: BackupData = JSON.parse(jsonString);
+export async function importUserData(content: string, filename = ''): Promise<{ categoriesImported: number; bookmarksImported: number }> {
+  let backupData: BackupData;
 
-  if (!data.categories || !Array.isArray(data.bookmarks)) {
-    throw new Error('Invalid JSON structure. Missing categories or bookmarks array.');
+  const isHtmlFile = filename.endsWith('.html') || filename.endsWith('.htm') || content.includes('<!DOCTYPE NETSCAPE-Bookmark-file-1') || content.includes('<DL>') || content.includes('<H3>') || content.includes('<A HREF=');
+
+  if (isHtmlFile) {
+    backupData = parseHTMLBookmarks(content);
+  } else {
+    try {
+      backupData = JSON.parse(content);
+    } catch {
+      // If JSON parse fails, try parsing as HTML as fallback
+      backupData = parseHTMLBookmarks(content);
+    }
+  }
+
+  if (!backupData.categories || !Array.isArray(backupData.bookmarks)) {
+    throw new Error('Invalid structure. Missing categories or bookmarks array.');
+  }
+
+  if (backupData.bookmarks.length === 0) {
+    throw new Error('No valid bookmarks found in the imported file.');
   }
 
   let catCount = 0;
@@ -46,24 +64,28 @@ export async function importUserDataJSON(jsonString: string): Promise<{ categori
 
   await db.transaction('rw', db.categories, db.bookmarks, async () => {
     // Import categories (avoid duplicate slugs)
-    for (const cat of data.categories) {
+    for (const cat of backupData.categories) {
       const existing = await db.categories.where('slug').equals(cat.slug).first();
       if (!existing) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { id, ...newCat } = cat;
-        await db.categories.add(newCat);
+        await db.categories.add(newCat as Category);
         catCount++;
       }
     }
 
     // Import bookmarks
-    for (const bm of data.bookmarks) {
+    for (const bm of backupData.bookmarks) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { id, ...newBm } = bm;
-      await db.bookmarks.add(newBm);
+      await db.bookmarks.add(newBm as Bookmark);
       bmCount++;
     }
   });
 
   return { categoriesImported: catCount, bookmarksImported: bmCount };
+}
+
+export async function importUserDataJSON(jsonString: string): Promise<{ categoriesImported: number; bookmarksImported: number }> {
+  return importUserData(jsonString);
 }
