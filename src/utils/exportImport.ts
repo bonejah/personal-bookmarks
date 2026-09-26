@@ -35,10 +35,27 @@ export function downloadJSONFile(jsonContent: string, filename = 'personal-bookm
   URL.revokeObjectURL(url);
 }
 
-export async function importUserData(content: string, filename = ''): Promise<{ categoriesImported: number; bookmarksImported: number }> {
+export async function clearAllData(): Promise<void> {
+  await db.transaction('rw', db.categories, db.bookmarks, async () => {
+    await db.bookmarks.clear();
+    await db.categories.clear();
+  });
+}
+
+export async function importUserData(
+  content: string,
+  filename = '',
+  clearExisting = false
+): Promise<{ categoriesImported: number; bookmarksImported: number }> {
   let backupData: BackupData;
 
-  const isHtmlFile = filename.endsWith('.html') || filename.endsWith('.htm') || content.includes('<!DOCTYPE NETSCAPE-Bookmark-file-1') || content.includes('<DL>') || content.includes('<H3>') || content.includes('<A HREF=');
+  const isHtmlFile =
+    filename.endsWith('.html') ||
+    filename.endsWith('.htm') ||
+    content.includes('<!DOCTYPE NETSCAPE-Bookmark-file-1') ||
+    content.includes('<DL>') ||
+    content.includes('<H3>') ||
+    content.includes('<A HREF=');
 
   if (isHtmlFile) {
     backupData = parseHTMLBookmarks(content);
@@ -46,7 +63,6 @@ export async function importUserData(content: string, filename = ''): Promise<{ 
     try {
       backupData = JSON.parse(content);
     } catch {
-      // If JSON parse fails, try parsing as HTML as fallback
       backupData = parseHTMLBookmarks(content);
     }
   }
@@ -63,10 +79,15 @@ export async function importUserData(content: string, filename = ''): Promise<{ 
   let bmCount = 0;
 
   await db.transaction('rw', db.categories, db.bookmarks, async () => {
-    // Import categories (avoid duplicate slugs)
+    if (clearExisting) {
+      await db.bookmarks.clear();
+      await db.categories.clear();
+    }
+
+    // Import categories (avoid duplicate slugs unless clearExisting is true)
     for (const cat of backupData.categories) {
       const existing = await db.categories.where('slug').equals(cat.slug).first();
-      if (!existing) {
+      if (!existing || clearExisting) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { id, ...newCat } = cat;
         await db.categories.add(newCat as Category);

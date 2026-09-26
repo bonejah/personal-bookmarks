@@ -10,18 +10,21 @@ import { X, FolderPlus, Check } from 'lucide-react';
 interface AddCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  categories: Category[];
   onSaveCategory: (cat: Omit<Category, 'id' | 'createdAt'>) => void;
 }
 
 export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
   isOpen,
   onClose,
+  categories,
   onSaveCategory,
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('Folder');
   const [color, setColor] = useState('#6366f1');
+  const [parentSlug, setParentSlug] = useState<string>('');
 
   if (!isOpen) return null;
 
@@ -37,10 +40,11 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
 
     onSaveCategory({
       name: name.trim(),
-      slug: slug || `subject-${Date.now()}`,
+      slug: parentSlug ? `${parentSlug}-${slug}` : (slug || `subject-${Date.now()}`),
       description: description.trim(),
       icon,
       color,
+      parentSlug: parentSlug || undefined,
       isCustom: true,
     });
 
@@ -48,8 +52,12 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
     setDescription('');
     setIcon('Folder');
     setColor('#6366f1');
+    setParentSlug('');
     onClose();
   };
+
+  // Only top-level or non-self categories can be parents
+  const availableParents = categories.filter((c) => !c.parentSlug);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
@@ -61,7 +69,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Create Custom Subject</h2>
-              <p className="text-xs text-slate-400">Add a new category with icon and theme color</p>
+              <p className="text-xs text-slate-400">Add a new category or subfolder</p>
             </div>
           </div>
           <button
@@ -82,9 +90,27 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Design, Crypto, Cooking, Gaming, Finance"
+              placeholder="e.g. Design, Benefits, Insurance, Gaming"
               className="w-full glass-input px-4 py-2.5 rounded-xl text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Parent Subject (Optional Subfolder)
+            </label>
+            <select
+              value={parentSlug}
+              onChange={(e) => setParentSlug(e.target.value)}
+              className="w-full glass-input px-4 py-2.5 rounded-xl text-sm text-slate-200 bg-slate-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+            >
+              <option value="">None (Top-Level Category)</option>
+              {availableParents.map((p) => (
+                <option key={p.slug} value={p.slug}>
+                  📁 {p.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

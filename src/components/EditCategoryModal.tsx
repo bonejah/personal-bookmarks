@@ -11,6 +11,7 @@ interface EditCategoryModalProps {
   category: Category | null;
   isOpen: boolean;
   onClose: () => void;
+  categories: Category[];
   onUpdateCategory: (id: number, updates: Partial<Category>) => void;
 }
 
@@ -18,12 +19,14 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
   category,
   isOpen,
   onClose,
+  categories,
   onUpdateCategory,
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('Folder');
   const [color, setColor] = useState('#6366f1');
+  const [parentSlug, setParentSlug] = useState<string>('');
 
   useEffect(() => {
     if (category) {
@@ -31,6 +34,7 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
       setDescription(category.description || '');
       setIcon(category.icon || 'Folder');
       setColor(category.color || '#6366f1');
+      setParentSlug(category.parentSlug || '');
     }
   }, [category]);
 
@@ -45,10 +49,16 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
       description: description.trim(),
       icon,
       color,
+      parentSlug: parentSlug || undefined,
     });
 
     onClose();
   };
+
+  // Prevent self-selection or circular parents
+  const availableParents = categories.filter(
+    (c) => c.slug !== category.slug && c.parentSlug !== category.slug
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
@@ -60,7 +70,7 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Edit Subject / Category</h2>
-              <p className="text-xs text-slate-400">Modify subject name, icon or accent color</p>
+              <p className="text-xs text-slate-400">Modify subject name, parent folder, icon or accent color</p>
             </div>
           </div>
           <button
@@ -84,6 +94,24 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
               placeholder="e.g. Studies, AI, Design, Weather"
               className="w-full glass-input px-4 py-2.5 rounded-xl text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Parent Subject (Optional Subfolder)
+            </label>
+            <select
+              value={parentSlug}
+              onChange={(e) => setParentSlug(e.target.value)}
+              className="w-full glass-input px-4 py-2.5 rounded-xl text-sm text-slate-200 bg-slate-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            >
+              <option value="">None (Top-Level Category)</option>
+              {availableParents.map((p) => (
+                <option key={p.slug} value={p.slug}>
+                  📁 {p.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

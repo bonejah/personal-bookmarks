@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Category } from '../types/bookmark';
 import { CategoryIcon } from './CategoryIcon';
-import { Layers, Plus, Edit2, Trash2, Sparkles } from 'lucide-react';
+import { Layers, Plus, Edit2, Trash2, Sparkles, ChevronRight, ChevronDown, Folder, FolderOpen } from 'lucide-react';
 
 interface SidebarProps {
   categories: Category[];
@@ -24,18 +24,164 @@ export const Sidebar: React.FC<SidebarProps> = ({
   categoryCounts,
   totalCount,
 }) => {
+  // State for expanded parent folders
+  const [expandedSlugs, setExpandedSlugs] = useState<Record<string, boolean>>(() => {
+    // Expand parents by default
+    const initial: Record<string, boolean> = {};
+    categories.forEach((cat) => {
+      if (cat.parentSlug) {
+        initial[cat.parentSlug] = true;
+      }
+    });
+    return initial;
+  });
+
+  const toggleExpand = (slug: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedSlugs((prev) => ({ ...prev, [slug]: !prev[slug] }));
+  };
+
+  // Group categories into roots and children
+  const rootCategories = categories.filter((c) => !c.parentSlug);
+  const childrenMap = new Map<string, Category[]>();
+
+  categories.forEach((cat) => {
+    if (cat.parentSlug) {
+      const existing = childrenMap.get(cat.parentSlug) || [];
+      existing.push(cat);
+      childrenMap.set(cat.parentSlug, existing);
+    }
+  });
+
+  // Helper to calculate total count including subcategories
+  const getCumulativeCount = (slug: string): number => {
+    let count = categoryCounts[slug] || 0;
+    const children = childrenMap.get(slug) || [];
+    children.forEach((child) => {
+      count += getCumulativeCount(child.slug);
+    });
+    return count;
+  };
+
+  const renderCategoryItem = (cat: Category, isChild = false) => {
+    const isActive = activeCategory === cat.slug;
+    const children = childrenMap.get(cat.slug) || [];
+    const hasChildren = children.length > 0;
+    const isExpanded = expandedSlugs[cat.slug] ?? true;
+    const count = hasChildren ? getCumulativeCount(cat.slug) : (categoryCounts[cat.slug] || 0);
+
+    return (
+      <div key={cat.slug} className="flex flex-col gap-1">
+        <div className="group relative flex items-center">
+          {/* Expand/Collapse Chevron for parent categories */}
+          {hasChildren && (
+            <button
+              onClick={(e) => toggleExpand(cat.slug, e)}
+              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors mr-0.5"
+              title={isExpanded ? 'Collapse subfolders' : 'Expand subfolders'}
+            >
+              {isExpanded ? (
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              )}
+            </button>
+          )}
+
+          <button
+            onClick={() => onSelectCategory(cat.slug)}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+              isChild ? 'ml-2' : ''
+            } ${
+              isActive
+                ? 'bg-slate-800/90 text-white border border-indigo-500/50 shadow-md shadow-indigo-500/10'
+                : 'text-slate-300 hover:bg-slate-800/50 hover:text-white border border-transparent'
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0 pr-14">
+              <div
+                className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
+              >
+                {hasChildren ? (
+                  isExpanded ? (
+                    <FolderOpen className="w-3.5 h-3.5" />
+                  ) : (
+                    <Folder className="w-3.5 h-3.5" />
+                  )
+                ) : (
+                  <CategoryIcon name={cat.icon} className="w-3.5 h-3.5" />
+                )}
+              </div>
+              <span className="truncate">{cat.name}</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                  isActive ? 'bg-indigo-500/20 text-indigo-300' : 'bg-slate-800 text-slate-400'
+                }`}
+              >
+                {count}
+              </span>
+            </div>
+          </button>
+
+          {/* Action Buttons for Edit & Delete Category */}
+          {cat.id && (
+            <div className="opacity-0 group-hover:opacity-100 absolute right-2 flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-700/80 transition-opacity z-10">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditCategory(cat);
+                }}
+                className="p-1 text-slate-400 hover:text-indigo-300 transition-colors"
+                title="Edit Subject"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const confirmMsg = count > 0
+                    ? `Are you sure you want to delete subject "${cat.name}"?\nThis will also delete bookmarks and subfolders inside it.`
+                    : `Are you sure you want to delete subject "${cat.name}"?`;
+                  if (confirm(confirmMsg)) {
+                    onDeleteCategory(cat.id!);
+                  }
+                }}
+                className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
+                title="Delete Subject"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Render Nested Children Subfolders */}
+        {hasChildren && isExpanded && (
+          <div className="pl-4 ml-3.5 border-l border-slate-800/80 flex flex-col gap-1 py-0.5">
+            {children.map((child) => renderCategoryItem(child, true))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <aside className="w-full md:w-64 shrink-0 glass-panel rounded-2xl p-4 border border-slate-800/80 flex flex-col gap-4">
       {/* Sidebar Header */}
       <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-slate-800">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
           <Layers className="w-4 h-4 text-indigo-400" />
-          <span>Subjects / Categories</span>
+          <span>Subjects & Folders</span>
         </h2>
         <button
           onClick={onOpenAddCategory}
           className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          title="Add New Subject"
+          title="Add New Subject / Folder"
         >
           <Plus className="w-4 h-4" />
         </button>
@@ -67,76 +213,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </button>
 
-        {/* Dynamic Category List */}
-        {categories.map((cat) => {
-          const isActive = activeCategory === cat.slug;
-          const count = categoryCounts[cat.slug] || 0;
-
-          return (
-            <div key={cat.slug} className="group relative flex items-center">
-              <button
-                onClick={() => onSelectCategory(cat.slug)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                  isActive
-                    ? 'bg-slate-800/90 text-white border border-indigo-500/50 shadow-md shadow-indigo-500/10'
-                    : 'text-slate-300 hover:bg-slate-800/50 hover:text-white border border-transparent'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0 pr-16">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
-                  >
-                    <CategoryIcon name={cat.icon} className="w-4 h-4" />
-                  </div>
-                  <span className="truncate">{cat.name}</span>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
-                      isActive ? 'bg-indigo-500/20 text-indigo-300' : 'bg-slate-800 text-slate-400'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </div>
-              </button>
-
-              {/* Action Buttons for Edit & Delete Category */}
-              {cat.id && (
-                <div className="opacity-0 group-hover:opacity-100 absolute right-2 flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-700/80 transition-opacity">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEditCategory(cat);
-                    }}
-                    className="p-1 text-slate-400 hover:text-indigo-300 transition-colors"
-                    title="Edit Subject"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const confirmMsg = count > 0
-                        ? `Are you sure you want to delete subject "${cat.name}"?\nThis will also delete all ${count} bookmark(s) inside it.`
-                        : `Are you sure you want to delete subject "${cat.name}"?`;
-                      if (confirm(confirmMsg)) {
-                        onDeleteCategory(cat.id!);
-                      }
-                    }}
-                    className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
-                    title="Delete Subject"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {/* Dynamic Nested Category Tree */}
+        {rootCategories.map((cat) => renderCategoryItem(cat))}
       </div>
 
       {/* Add New Subject Button Footer */}
@@ -146,7 +224,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="w-full py-2.5 px-3 rounded-xl border border-dashed border-slate-700 hover:border-indigo-500/50 text-xs font-medium text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/5 transition-all flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4 text-indigo-400" />
-          <span>+ Create New Subject</span>
+          <span>+ Create Subject / Folder</span>
         </button>
       </div>
     </aside>

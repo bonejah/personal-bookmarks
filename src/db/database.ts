@@ -11,6 +11,11 @@ export class PersonalBookmarkDB extends Dexie {
       categories: '++id, &slug, name, isCustom, createdAt',
       bookmarks: '++id, url, categorySlug, platform, domain, isPinned, createdAt',
     });
+
+    this.version(2).stores({
+      categories: '++id, &slug, parentSlug, name, isCustom, createdAt',
+      bookmarks: '++id, url, categorySlug, platform, domain, isPinned, createdAt',
+    });
   }
 }
 

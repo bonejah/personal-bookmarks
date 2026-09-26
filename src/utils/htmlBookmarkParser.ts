@@ -45,8 +45,7 @@ export function parseHTMLBookmarks(htmlString: string): BackupData {
     return color;
   }
 
-  // Recursive function to traverse DT / DL elements in Netscape bookmark format
-  function traverseContainer(element: Element, folderPath: string[]) {
+  function traverseContainer(element: Element, folderPath: string[], parentSlug?: string) {
     const children = Array.from(element.children);
 
     for (let i = 0; i < children.length; i++) {
@@ -54,36 +53,36 @@ export function parseHTMLBookmarks(htmlString: string): BackupData {
       const tagName = child.tagName.toUpperCase();
 
       if (tagName === 'DT') {
-        // Look for H3 (Folder header) or A (Link) inside this DT
         const h3 = child.querySelector(':scope > H3, :scope > h3');
         const a = child.querySelector(':scope > A, :scope > a');
         const nextDl = child.querySelector(':scope > DL, :scope > dl') || child.nextElementSibling;
 
         if (h3) {
           const rawFolderName = unescapeHtml(h3.textContent || '').trim();
-          // Skip root toolbar wrapper titles if generic
+          // Skip root wrapper titles like Bookmarks or Bookmarks Bar
           if (rawFolderName && rawFolderName.toLowerCase() !== 'bookmarks' && rawFolderName.toLowerCase() !== 'bookmarks bar') {
             const newFolderPath = [...folderPath, rawFolderName];
-            const slug = generateSlug(rawFolderName);
+            // Create a unique hierarchical slug (e.g., canada-school-matheus)
+            const slug = generateSlug(newFolderPath.join('-'));
 
             if (!categoriesMap.has(slug)) {
               categoriesMap.set(slug, {
                 name: rawFolderName,
                 slug,
-                description: `Imported folder: ${newFolderPath.join(' > ')}`,
+                description: `Folder: ${newFolderPath.join(' > ')}`,
                 icon: 'Folder',
                 color: getNextColor(),
+                parentSlug,
                 isCustom: true,
                 createdAt: Date.now(),
               });
             }
 
-            // If there's a DL inside or next to this DT, traverse it
             if (nextDl && nextDl.tagName.toUpperCase() === 'DL') {
-              traverseContainer(nextDl, newFolderPath);
+              traverseContainer(nextDl, newFolderPath, slug);
             }
           } else if (nextDl && nextDl.tagName.toUpperCase() === 'DL') {
-            traverseContainer(nextDl, folderPath);
+            traverseContainer(nextDl, folderPath, parentSlug);
           }
         } else if (a) {
           const href = a.getAttribute('href') || a.getAttribute('HREF') || '';
@@ -96,20 +95,18 @@ export function parseHTMLBookmarks(htmlString: string): BackupData {
           const timestamp = addDateAttr ? parseInt(addDateAttr, 10) * 1000 : Date.now();
           const validTimestamp = isNaN(timestamp) ? Date.now() : timestamp;
 
-          // Determine metadata & category
           const metadata = parseUrlMetadata(href);
-          const currentFolder = folderPath.length > 0 ? folderPath[folderPath.length - 1] : '';
-          let categorySlug = currentFolder ? generateSlug(currentFolder) : metadata.suggestedCategorySlug;
+          const currentFolderSlug = folderPath.length > 0 ? generateSlug(folderPath.join('-')) : metadata.suggestedCategorySlug;
 
-          // Ensure category exists
-          if (!categoriesMap.has(categorySlug)) {
-            const catName = currentFolder || metadata.suggestedCategorySlug;
-            categoriesMap.set(categorySlug, {
+          if (!categoriesMap.has(currentFolderSlug)) {
+            const catName = folderPath.length > 0 ? folderPath[folderPath.length - 1] : metadata.suggestedCategorySlug;
+            categoriesMap.set(currentFolderSlug, {
               name: catName.charAt(0).toUpperCase() + catName.slice(1),
-              slug: categorySlug,
+              slug: currentFolderSlug,
               description: folderPath.length > 0 ? `Folder: ${folderPath.join(' > ')}` : 'Imported Bookmark',
               icon: 'Folder',
               color: getNextColor(),
+              parentSlug,
               isCustom: true,
               createdAt: Date.now(),
             });
@@ -127,7 +124,7 @@ export function parseHTMLBookmarks(htmlString: string): BackupData {
             platformDetail: metadata.platformDetail,
             thumbnailUrl: metadata.thumbnailUrl,
             faviconUrl,
-            categorySlug,
+            categorySlug: currentFolderSlug,
             description: folderPath.length > 0 ? `Folder: ${folderPath.join(' > ')}` : undefined,
             tags: folderPath.map((f) => f.toLowerCase()),
             isPinned: false,
@@ -136,18 +133,17 @@ export function parseHTMLBookmarks(htmlString: string): BackupData {
           });
         }
       } else if (tagName === 'DL') {
-        traverseContainer(child, folderPath);
+        traverseContainer(child, folderPath, parentSlug);
       }
     }
   }
 
-  // Fallback: If querySelector strategy doesn't match custom structure, fallback to regex or all 'A' tags
   const rootDl = doc.querySelector('dl, DL') || doc.body;
   if (rootDl) {
     traverseContainer(rootDl, []);
   }
 
-  // Backup fallback if tree traversal missed links due to malformed HTML
+  // Fallback if DOM tree traversal was empty
   if (bookmarks.length === 0) {
     const allLinks = Array.from(doc.querySelectorAll('a, A'));
     for (const a of allLinks) {

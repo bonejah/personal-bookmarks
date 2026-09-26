@@ -5,6 +5,7 @@ export interface Category {
   description?: string;
   icon: string; // Lucide icon name or emoji
   color: string; // Tailwind color class / hex
+  parentSlug?: string; // Parent category slug for nested folders
   isCustom?: boolean;
   createdAt: number;
 }

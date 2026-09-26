@@ -105,9 +105,28 @@ export function App() {
     const cat = await db.categories.get(id);
     if (cat) {
       await db.transaction('rw', db.categories, db.bookmarks, async () => {
-        await db.bookmarks.where('categorySlug').equals(cat.slug).delete();
-        await db.categories.delete(id);
+        // Collect category and all subcategory slugs
+        const allCategorySlugsToDelete = [cat.slug];
+        const queue = [cat.slug];
+        const allCategories = await db.categories.toArray();
+
+        while (queue.length > 0) {
+          const current = queue.shift()!;
+          allCategories.forEach((c) => {
+            if (c.parentSlug === current && !allCategorySlugsToDelete.includes(c.slug)) {
+              allCategorySlugsToDelete.push(c.slug);
+              queue.push(c.slug);
+            }
+          });
+        }
+
+        // Delete bookmarks and categories
+        for (const slug of allCategorySlugsToDelete) {
+          await db.bookmarks.where('categorySlug').equals(slug).delete();
+          await db.categories.where('slug').equals(slug).delete();
+        }
       });
+
       if (activeCategorySlug === cat.slug) {
         setActiveCategorySlug('all');
       }
@@ -179,6 +198,7 @@ export function App() {
       <AddCategoryModal
         isOpen={isAddCategoryOpen}
         onClose={() => setIsAddCategoryOpen(false)}
+        categories={categories}
         onSaveCategory={handleSaveCategory}
       />
 
@@ -186,6 +206,7 @@ export function App() {
         isOpen={isEditCategoryOpen}
         onClose={() => setIsEditCategoryOpen(false)}
         category={editingCategory}
+        categories={categories}
         onUpdateCategory={handleUpdateCategory}
       />
 
