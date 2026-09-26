@@ -30,31 +30,10 @@ export const BookmarkGrid: React.FC<BookmarkGridProps> = ({
 
   const currentCategory = categories.find((c) => c.slug === activeCategorySlug);
 
-  // Collect category slug and all descendant subfolder slugs recursively
-  const getCategoryAndDescendantSlugs = (targetSlug: string): Set<string> => {
-    const slugs = new Set<string>([targetSlug]);
-    const queue = [targetSlug];
-
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      categories.forEach((c) => {
-        if (c.parentSlug === current && !slugs.has(c.slug)) {
-          slugs.add(c.slug);
-          queue.push(c.slug);
-        }
-      });
-    }
-
-    return slugs;
-  };
-
-  const activeSlugsSet = activeCategorySlug !== 'all'
-    ? getCategoryAndDescendantSlugs(activeCategorySlug)
-    : null;
-
   // Filter Bookmarks
   let filtered = bookmarks.filter((bm) => {
-    if (activeSlugsSet && !activeSlugsSet.has(bm.categorySlug)) {
+    // Direct category match (exact folder match)
+    if (activeCategorySlug !== 'all' && bm.categorySlug !== activeCategorySlug) {
       return false;
     }
 

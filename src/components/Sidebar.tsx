@@ -26,7 +26,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   // State for expanded parent folders
   const [expandedSlugs, setExpandedSlugs] = useState<Record<string, boolean>>(() => {
-    // Expand parents by default
     const initial: Record<string, boolean> = {};
     categories.forEach((cat) => {
       if (cat.parentSlug) {
@@ -53,22 +52,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   });
 
-  // Helper to calculate total count including subcategories
-  const getCumulativeCount = (slug: string): number => {
-    let count = categoryCounts[slug] || 0;
-    const children = childrenMap.get(slug) || [];
-    children.forEach((child) => {
-      count += getCumulativeCount(child.slug);
-    });
-    return count;
-  };
-
   const renderCategoryItem = (cat: Category, isChild = false) => {
     const isActive = activeCategory === cat.slug;
     const children = childrenMap.get(cat.slug) || [];
     const hasChildren = children.length > 0;
     const isExpanded = expandedSlugs[cat.slug] ?? true;
-    const count = hasChildren ? getCumulativeCount(cat.slug) : (categoryCounts[cat.slug] || 0);
+    
+    // Direct count of bookmarks inside this specific folder
+    const count = categoryCounts[cat.slug] || 0;
 
     return (
       <div key={cat.slug} className="flex flex-col gap-1">
@@ -98,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 : 'text-slate-300 hover:bg-slate-800/50 hover:text-white border border-transparent'
             }`}
           >
-            <div className="flex items-center gap-2.5 min-w-0 flex-1 group-hover:pr-12 transition-all">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
               <div
                 className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
                 style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
@@ -120,18 +111,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <div className="flex items-center gap-1.5 shrink-0 ml-1">
               <span
-                className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono transition-opacity ${
                   isActive ? 'bg-indigo-500/20 text-indigo-300' : 'bg-slate-800 text-slate-400'
-                }`}
+                } group-hover:opacity-0`}
               >
                 {count}
               </span>
             </div>
           </button>
 
-          {/* Action Buttons for Edit & Delete Category */}
+          {/* Action Buttons for Edit & Delete Category (Overlay on hover without clipping) */}
           {cat.id && (
-            <div className="opacity-0 group-hover:opacity-100 absolute right-2 flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-700/80 transition-opacity z-10">
+            <div className="opacity-0 group-hover:opacity-100 absolute right-1.5 flex items-center gap-1 bg-slate-900/95 px-1.5 py-1 rounded-lg border border-slate-700/80 shadow-lg transition-opacity z-10">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
