@@ -77,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {hasChildren && (
             <button
               onClick={(e) => toggleExpand(cat.slug, e)}
-              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors mr-0.5"
+              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors mr-0.5 shrink-0"
               title={isExpanded ? 'Collapse subfolders' : 'Expand subfolders'}
             >
               {isExpanded ? (
@@ -91,14 +91,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={() => onSelectCategory(cat.slug)}
             className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-              isChild ? 'ml-2' : ''
+              isChild ? 'ml-1' : ''
             } ${
               isActive
                 ? 'bg-slate-800/90 text-white border border-indigo-500/50 shadow-md shadow-indigo-500/10'
                 : 'text-slate-300 hover:bg-slate-800/50 hover:text-white border border-transparent'
             }`}
           >
-            <div className="flex items-center gap-2.5 min-w-0 pr-14">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1 group-hover:pr-12 transition-all">
               <div
                 className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
                 style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
@@ -113,10 +113,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <CategoryIcon name={cat.icon} className="w-3.5 h-3.5" />
                 )}
               </div>
-              <span className="truncate">{cat.name}</span>
+              <span className="truncate text-left" title={cat.name}>
+                {cat.name}
+              </span>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0 ml-1">
               <span
                 className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
                   isActive ? 'bg-indigo-500/20 text-indigo-300' : 'bg-slate-800 text-slate-400'
@@ -162,7 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Render Nested Children Subfolders */}
         {hasChildren && isExpanded && (
-          <div className="pl-4 ml-3.5 border-l border-slate-800/80 flex flex-col gap-1 py-0.5">
+          <div className="pl-2 ml-2 border-l border-slate-800/80 flex flex-col gap-1 py-0.5">
             {children.map((child) => renderCategoryItem(child, true))}
           </div>
         )}
@@ -171,7 +173,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-full md:w-64 shrink-0 glass-panel rounded-2xl p-4 border border-slate-800/80 flex flex-col gap-4">
+    <aside className="w-full md:w-72 lg:w-80 shrink-0 glass-panel rounded-2xl p-4 border border-slate-800/80 flex flex-col gap-4">
       {/* Sidebar Header */}
       <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-slate-800">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
