@@ -54,6 +54,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Applied for one frame during a theme switch so the whole UI repaints in a
+   single pass (no per-element color animation = no flicker). */
+.theme-no-transition,
+.theme-no-transition *,
+.theme-no-transition *::before,
+.theme-no-transition *::after {
+  transition: none !important;
+}
+
 #root {
   min-height: 100vh;
   width: 100%;

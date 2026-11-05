@@ -31,13 +31,26 @@ export function App() {
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
+    const root = document.documentElement;
+
+    // Suppress every transition for one frame while the theme class flips, so
+    // all colors repaint together in a single pass instead of each element
+    // animating its own color change on its own duration (which looked like a
+    // flicker over the many blurred panels and transition-* utilities).
+    root.classList.add('theme-no-transition');
+
     if (theme === 'light') {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
+      root.classList.add('light');
+      root.classList.remove('dark');
     } else {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
+      root.classList.add('dark');
+      root.classList.remove('light');
     }
+
+    const id = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => root.classList.remove('theme-no-transition'));
+    });
+    return () => window.cancelAnimationFrame(id);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
