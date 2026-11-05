@@ -45,7 +45,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const toggleExpand = (slug: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setExpandedSlugs((prev) => ({ ...prev, [slug]: !prev[slug] }));
+    // Folders are expanded by default (isExpanded uses `?? true`), so flip the
+    // effective value — otherwise the first click re-sets `true` and nothing
+    // happens until a second click.
+    setExpandedSlugs((prev) => ({ ...prev, [slug]: !(prev[slug] ?? true) }));
   };
 
   const readDraggedIds = (e: React.DragEvent): number[] => {
@@ -215,7 +218,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={`glass-panel border border-slate-800/80 flex flex-col gap-4 p-4
           fixed top-0 left-0 z-50 h-full w-72 max-w-[85%] rounded-r-2xl transform transition-transform duration-300
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          md:static md:translate-x-0 md:h-auto md:w-72 lg:w-80 md:rounded-2xl md:shrink-0`}
+          md:sticky md:top-24 md:self-start md:translate-x-0 md:z-auto md:transition-none
+          md:h-auto md:w-72 lg:w-80 md:rounded-2xl md:shrink-0`}
         aria-label="Subjects navigation"
       >
         {/* Sidebar Header */}
