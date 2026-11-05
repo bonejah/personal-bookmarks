@@ -52,7 +52,6 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #root {
@@ -67,7 +66,6 @@ body {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--panel-border);
   box-shadow: var(--panel-shadow);
-  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .glass-card {
@@ -75,7 +73,9 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--card-border);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Only animate hover affordances, never theme colors or the blur layer,
+     so switching theme is a single instant repaint (no flash/jank). */
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-card:hover {
@@ -89,7 +89,7 @@ body {
   background: var(--input-bg);
   border: 1px solid var(--input-border);
   color: var(--text-main);
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .glass-input:focus {

@@ -315,7 +315,7 @@ export function App() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col font-sans transition-colors duration-300 selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       {/* Top Header Navbar */}
       <Navbar
         searchQuery={searchQuery}
