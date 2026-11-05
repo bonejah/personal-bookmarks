@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Bookmark, Category } from '../types/bookmark';
 import { BookmarkCard } from './BookmarkCard';
 import { CategoryIcon } from './CategoryIcon';
-import { Plus, ArrowUpDown, Filter, BookmarkX, Sparkles } from 'lucide-react';
+import { collectSubtreeSlugs } from '../utils/categoryTree';
+import { Plus, ArrowUpDown, Filter, BookmarkX, Sparkles, CheckSquare, Pin, PinOff, Trash2, X } from 'lucide-react';
 
 interface BookmarkGridProps {
   bookmarks: Bookmark[];
@@ -13,6 +14,9 @@ interface BookmarkGridProps {
   onEditBookmark: (bm: Bookmark) => void;
   onDeleteBookmark: (id: number) => void;
   onTogglePin: (id: number, currentPinned: boolean) => void;
+  onBulkDelete: (ids: number[]) => void;
+  onBulkMove: (ids: number[], targetSlug: string) => void;
+  onBulkPin: (ids: number[], pinned: boolean) => void;
 }
 
 export const BookmarkGrid: React.FC<BookmarkGridProps> = ({
@@ -24,49 +28,107 @@ export const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   onEditBookmark,
   onDeleteBookmark,
   onTogglePin,
+  onBulkDelete,
+  onBulkMove,
+  onBulkPin,
 }) => {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alphabetical'>('newest');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const currentCategory = categories.find((c) => c.slug === activeCategorySlug);
 
-  // Filter Bookmarks
-  let filtered = bookmarks.filter((bm) => {
-    // Direct category match (exact folder match)
-    if (activeCategorySlug !== 'all' && bm.categorySlug !== activeCategorySlug) {
-      return false;
-    }
+  // A parent folder shows its own bookmarks plus those of every descendant folder.
+  const visibleSlugs = useMemo(
+    () =>
+      activeCategorySlug === 'all'
+        ? null
+        : new Set(collectSubtreeSlugs(categories, activeCategorySlug)),
+    [categories, activeCategorySlug],
+  );
 
-    if (platformFilter !== 'all' && bm.platform !== platformFilter) {
-      return false;
-    }
+  const filtered = useMemo(() => {
+    const matched = bookmarks.filter((bm) => {
+      if (visibleSlugs && !visibleSlugs.has(bm.categorySlug)) {
+        return false;
+      }
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const titleMatch = bm.title.toLowerCase().includes(q);
-      const urlMatch = bm.url.toLowerCase().includes(q);
-      const domainMatch = bm.domain.toLowerCase().includes(q);
-      const tagMatch = bm.tags?.some((t) => t.toLowerCase().includes(q));
-      const platformMatch = bm.platformDetail?.toLowerCase().includes(q);
+      if (platformFilter !== 'all' && bm.platform !== platformFilter) {
+        return false;
+      }
 
-      return titleMatch || urlMatch || domainMatch || tagMatch || platformMatch;
-    }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = bm.title.toLowerCase().includes(q);
+        const urlMatch = bm.url.toLowerCase().includes(q);
+        const domainMatch = bm.domain.toLowerCase().includes(q);
+        const tagMatch = bm.tags?.some((t) => t.toLowerCase().includes(q));
+        const platformMatch = bm.platformDetail?.toLowerCase().includes(q);
 
-    return true;
-  });
+        return titleMatch || urlMatch || domainMatch || tagMatch || platformMatch;
+      }
 
-  // Sort Bookmarks (Pinned items always come first)
-  filtered = [...filtered].sort((a, b) => {
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
+      return true;
+    });
 
-    if (sortBy === 'newest') return b.createdAt - a.createdAt;
-    if (sortBy === 'oldest') return a.createdAt - b.createdAt;
-    if (sortBy === 'alphabetical') return a.title.localeCompare(b.title);
-    return 0;
-  });
+    // Sort Bookmarks (Pinned items always come first)
+    return matched.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+
+      if (sortBy === 'newest') return b.createdAt - a.createdAt;
+      if (sortBy === 'oldest') return a.createdAt - b.createdAt;
+      if (sortBy === 'alphabetical') return a.title.localeCompare(b.title);
+      return 0;
+    });
+  }, [bookmarks, visibleSlugs, platformFilter, searchQuery, sortBy]);
 
   const categoryMap = new Map<string, Category>(categories.map((c) => [c.slug, c]));
+
+  const visibleIds = useMemo(
+    () => filtered.map((bm) => bm.id).filter((id): id is number => id !== undefined),
+    [filtered],
+  );
+
+  // Drop any selected ids that are no longer visible (e.g. after a filter change).
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const visible = new Set(visibleIds);
+      const next = new Set([...prev].filter((id) => visible.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [visibleIds]);
+
+  const selectedCount = selectedIds.size;
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allVisibleSelected ? new Set() : new Set(visibleIds));
+  };
+
+  // When dragging a card that is part of a multi-selection, drag the whole set.
+  const dragIdsFor = (id: number): number[] =>
+    selectedIds.has(id) && selectedIds.size > 1 ? [...selectedIds] : [id];
+
+  const runBulk = (fn: () => void) => {
+    fn();
+    exitSelection();
+  };
 
   return (
     <div className="flex-1 min-w-0">
@@ -145,12 +207,27 @@ export const BookmarkGrid: React.FC<BookmarkGridProps> = ({
           ))}
         </div>
 
-        {/* Sort Select */}
+        {/* Sort + Select */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => (selectionMode ? exitSelection() : setSelectionMode(true))}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 border ${
+              selectionMode
+                ? 'bg-indigo-600 text-white border-indigo-500'
+                : 'bg-slate-900/60 text-slate-400 hover:text-white border-slate-800'
+            }`}
+            aria-pressed={selectionMode}
+            title="Select multiple bookmarks"
+          >
+            <CheckSquare className="w-3.5 h-3.5" />
+            <span>Select</span>
+          </button>
+
           <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'alphabetical')}
+            aria-label="Sort bookmarks"
             className="glass-input px-3 py-1.5 rounded-xl text-xs bg-slate-900 border border-slate-800 text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
           >
             <option value="newest">Sort: Newest First</option>
@@ -159,6 +236,80 @@ export const BookmarkGrid: React.FC<BookmarkGridProps> = ({
           </select>
         </div>
       </div>
+
+      {/* Bulk Action Bar */}
+      {selectionMode && (
+        <div className="glass-panel rounded-2xl border border-indigo-500/40 p-3 mb-6 flex flex-wrap items-center gap-2 sticky top-20 z-30">
+          <span className="text-xs font-bold text-white px-2">
+            {selectedCount} selected
+          </span>
+          <button
+            onClick={toggleSelectAll}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/80 text-slate-200 hover:bg-slate-700 transition-colors"
+          >
+            {allVisibleSelected ? 'Deselect all' : 'Select all'}
+          </button>
+
+          <div className="flex-1" />
+
+          <label className="sr-only" htmlFor="bulk-move">Move selected to subject</label>
+          <select
+            id="bulk-move"
+            value=""
+            disabled={selectedCount === 0}
+            onChange={(e) => {
+              if (e.target.value) runBulk(() => onBulkMove([...selectedIds], e.target.value));
+            }}
+            className="glass-input px-3 py-1.5 rounded-lg text-xs bg-slate-900 border border-slate-800 text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer disabled:opacity-40"
+          >
+            <option value="">
+              Move to…
+            </option>
+            {categories.map((cat) => (
+              <option key={cat.slug} value={cat.slug}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => runBulk(() => onBulkPin([...selectedIds], true))}
+            disabled={selectedCount === 0}
+            className="p-2 rounded-lg text-slate-300 hover:text-amber-400 hover:bg-slate-800 transition-colors disabled:opacity-40"
+            title="Pin selected"
+            aria-label="Pin selected bookmarks"
+          >
+            <Pin className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => runBulk(() => onBulkPin([...selectedIds], false))}
+            disabled={selectedCount === 0}
+            className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-40"
+            title="Unpin selected"
+            aria-label="Unpin selected bookmarks"
+          >
+            <PinOff className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => runBulk(() => onBulkDelete([...selectedIds]))}
+            disabled={selectedCount === 0}
+            className="p-2 rounded-lg text-slate-300 hover:text-rose-400 hover:bg-slate-800 transition-colors disabled:opacity-40"
+            title="Delete selected"
+            aria-label="Delete selected bookmarks"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={exitSelection}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            title="Cancel selection"
+            aria-label="Cancel selection"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Grid of Cards or Empty State */}
       {filtered.length > 0 ? (
@@ -171,6 +322,10 @@ export const BookmarkGrid: React.FC<BookmarkGridProps> = ({
               onEdit={onEditBookmark}
               onDelete={onDeleteBookmark}
               onTogglePin={onTogglePin}
+              selectable={selectionMode}
+              selected={bookmark.id !== undefined && selectedIds.has(bookmark.id)}
+              onToggleSelect={toggleSelect}
+              dragIdsFor={dragIdsFor}
             />
           ))}
         </div>
