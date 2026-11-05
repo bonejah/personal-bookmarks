@@ -10,9 +10,11 @@ import {
   CloudSun,
   Newspaper,
   Globe,
+  GripVertical,
 } from 'lucide-react';
 import { YoutubeIcon, LinkedinIcon, GithubIcon, TwitterIcon } from './PlatformIcons';
 import { CategoryIcon } from './CategoryIcon';
+import { BOOKMARK_DND_TYPE } from '../utils/dnd';
 
 interface BookmarkCardProps {
   bookmark: Bookmark;
@@ -20,6 +22,10 @@ interface BookmarkCardProps {
   onEdit: (bm: Bookmark) => void;
   onDelete: (id: number) => void;
   onTogglePin: (id: number, currentPinned: boolean) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: number) => void;
+  dragIdsFor?: (id: number) => number[];
 }
 
 export const BookmarkCard: React.FC<BookmarkCardProps> = ({
@@ -28,8 +34,20 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   onEdit,
   onDelete,
   onTogglePin,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+  dragIdsFor,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [thumbError, setThumbError] = useState(false);
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (bookmark.id === undefined) return;
+    const ids = dragIdsFor ? dragIdsFor(bookmark.id) : [bookmark.id];
+    e.dataTransfer.setData(BOOKMARK_DND_TYPE, ids.join(','));
+    e.dataTransfer.effectAllowed = 'move';
+  };
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -94,10 +112,38 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
   return (
     <div
-      className={`group relative glass-card rounded-2xl overflow-hidden flex flex-col justify-between p-5 ${
-        bookmark.isPinned ? 'border-amber-500/40 ring-1 ring-amber-500/20 bg-slate-900/60' : ''
+      draggable
+      onDragStart={handleDragStart}
+      className={`group relative glass-card rounded-2xl overflow-hidden flex flex-col justify-between p-5 cursor-grab active:cursor-grabbing ${
+        selected ? 'ring-2 ring-indigo-500 border-indigo-400' : ''
+      } ${
+        bookmark.isPinned && !selected ? 'border-amber-500/40 ring-1 ring-amber-500/20 bg-slate-900/60' : ''
       }`}
     >
+      {/* Selection checkbox */}
+      {selectable && bookmark.id !== undefined && (
+        <button
+          onClick={() => onToggleSelect?.(bookmark.id!)}
+          aria-pressed={selected}
+          aria-label={selected ? 'Deselect bookmark' : 'Select bookmark'}
+          className={`absolute top-3 left-3 z-20 w-6 h-6 rounded-md border flex items-center justify-center transition-colors ${
+            selected
+              ? 'bg-indigo-600 border-indigo-500 text-white'
+              : 'bg-slate-900/80 border-slate-600 text-transparent hover:border-indigo-400'
+          }`}
+        >
+          <Check className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* Drag handle hint (appears on hover) */}
+      <div
+        className="absolute top-3 left-1/2 -translate-x-1/2 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+        aria-hidden="true"
+      >
+        <GripVertical className="w-4 h-4" />
+      </div>
+
       {/* Pinned Badge Ribbon */}
       {bookmark.isPinned && (
         <div className="absolute top-3 right-3 text-amber-400" title="Pinned Bookmark">
@@ -107,7 +153,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
       <div>
         {/* Top Header: Platform Badge + Subject Badge */}
-        <div className="flex items-center justify-between gap-2 mb-3 pr-6">
+        <div className={`flex items-center justify-between gap-2 mb-3 pr-6 ${selectable ? 'pl-8' : ''}`}>
           {getPlatformBadge()}
 
           {category && (
@@ -126,13 +172,14 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
         </div>
 
         {/* Thumbnail Preview (for YouTube videos or media) */}
-        {bookmark.thumbnailUrl && (
+        {bookmark.thumbnailUrl && !thumbError && (
           <div className="relative mb-3.5 rounded-xl overflow-hidden aspect-video bg-slate-950 border border-slate-800 group-hover:border-indigo-500/30 transition-colors">
             <img
               src={bookmark.thumbnailUrl}
               alt={bookmark.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              onError={() => setThumbError(true)}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-60" />
           </div>
@@ -201,6 +248,8 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 : 'text-slate-400 hover:text-amber-400 hover:bg-slate-800'
             }`}
             title={bookmark.isPinned ? 'Unpin' : 'Pin to top'}
+            aria-label={bookmark.isPinned ? 'Unpin bookmark' : 'Pin bookmark to top'}
+            aria-pressed={!!bookmark.isPinned}
           >
             <Pin className="w-3.5 h-3.5" />
           </button>
@@ -210,6 +259,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             onClick={handleCopy}
             className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition-colors"
             title="Copy URL"
+            aria-label={copied ? 'URL copied' : 'Copy URL'}
           >
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
@@ -219,6 +269,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             onClick={() => onEdit(bookmark)}
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-300 hover:bg-slate-800 transition-colors"
             title="Edit Bookmark"
+            aria-label="Edit bookmark"
           >
             <Edit2 className="w-3.5 h-3.5" />
           </button>
@@ -232,6 +283,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             }}
             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
             title="Delete Bookmark"
+            aria-label="Delete bookmark"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -243,6 +295,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             rel="noopener noreferrer"
             className="ml-1 p-1.5 rounded-lg bg-indigo-600/80 text-white hover:bg-indigo-500 transition-all shadow-md shadow-indigo-600/30 flex items-center justify-center"
             title="Open Link"
+            aria-label={`Open ${bookmark.title} in a new tab`}
           >
             <ExternalLink className="w-3.5 h-3.5" />
           </a>

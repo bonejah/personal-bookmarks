@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Bookmark, Category } from '../types/bookmark';
+import { useModalA11y } from '../hooks/useModalA11y';
 import { X, Edit2, Check, FileText, Tag } from 'lucide-react';
 import { CategoryIcon } from './CategoryIcon';
 
@@ -23,6 +24,8 @@ export const EditBookmarkModal: React.FC<EditBookmarkModalProps> = ({
   const [categorySlug, setCategorySlug] = useState('');
   const [description, setDescription] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+
+  const dialogRef = useModalA11y(isOpen, onClose);
 
   useEffect(() => {
     if (bookmark) {
@@ -58,8 +61,18 @@ export const EditBookmarkModal: React.FC<EditBookmarkModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-      <div className="w-full max-w-lg glass-panel rounded-2xl border border-slate-700/80 shadow-2xl p-6 relative">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Edit bookmark"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg glass-panel rounded-2xl border border-slate-700/80 shadow-2xl p-6 relative"
+      >
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
@@ -71,7 +84,9 @@ export const EditBookmarkModal: React.FC<EditBookmarkModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />

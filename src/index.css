@@ -141,6 +141,32 @@ body {
   border-color: #cbd5e1 !important;
 }
 
+.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Input placeholders were invisible on the light surfaces */
+.light .placeholder-slate-500::placeholder,
+.light .placeholder-slate-400::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Platform/badge text uses -400/-300 shades tuned for dark surfaces; darken
+   them in light mode so the colored pills keep enough contrast (WCAG AA). */
+.light .text-red-400 { color: #dc2626 !important; }
+.light .text-blue-400 { color: #2563eb !important; }
+.light .text-cyan-400 { color: #0891b2 !important; }
+.light .text-cyan-300 { color: #0e7490 !important; }
+.light .text-sky-400 { color: #0284c7 !important; }
+.light .text-amber-400 { color: #b45309 !important; }
+.light .text-amber-300 { color: #b45309 !important; }
+.light .text-emerald-400 { color: #059669 !important; }
+.light .text-emerald-300 { color: #047857 !important; }
+.light .text-indigo-400 { color: #4f46e5 !important; }
+.light .text-indigo-300 { color: #4338ca !important; }
+.light .text-rose-400 { color: #e11d48 !important; }
+.light .text-purple-400 { color: #9333ea !important; }
+
 /* Modals in light mode */
 .light .glass-panel.rounded-2xl {
   background-color: var(--modal-bg) !important;
@@ -157,6 +183,22 @@ body {
   background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* Fade/slide-in used by modals and toasts */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in {
+    animation: none;
+  }
 }
 
 /* Custom Scrollbar */

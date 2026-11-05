@@ -1,6 +1,7 @@
 import { db } from '../db/database';
 import type { Bookmark, Category } from '../types/bookmark';
 import { parseHTMLBookmarks } from './htmlBookmarkParser';
+import { normalizeUrl } from './dedup';
 
 export interface BackupData {
   version: number;
@@ -46,7 +47,7 @@ export async function importUserData(
   content: string,
   filename = '',
   clearExisting = false
-): Promise<{ categoriesImported: number; bookmarksImported: number }> {
+): Promise<{ categoriesImported: number; bookmarksImported: number; bookmarksSkipped: number }> {
   let backupData: BackupData;
 
   const isHtmlFile =
@@ -77,6 +78,7 @@ export async function importUserData(
 
   let catCount = 0;
   let bmCount = 0;
+  let bmSkipped = 0;
 
   await db.transaction('rw', db.categories, db.bookmarks, async () => {
     if (clearExisting) {
@@ -95,8 +97,19 @@ export async function importUserData(
       }
     }
 
-    // Import bookmarks
+    // Skip bookmarks whose URL already exists (after an optional clear), so
+    // re-importing the same file does not create duplicates.
+    const seenUrls = new Set<string>();
+    const existingBookmarks = await db.bookmarks.toArray();
+    existingBookmarks.forEach((bm) => seenUrls.add(normalizeUrl(bm.url)));
+
     for (const bm of backupData.bookmarks) {
+      const key = normalizeUrl(bm.url);
+      if (seenUrls.has(key)) {
+        bmSkipped++;
+        continue;
+      }
+      seenUrls.add(key);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { id, ...newBm } = bm;
       await db.bookmarks.add(newBm as Bookmark);
@@ -104,9 +117,11 @@ export async function importUserData(
     }
   });
 
-  return { categoriesImported: catCount, bookmarksImported: bmCount };
+  return { categoriesImported: catCount, bookmarksImported: bmCount, bookmarksSkipped: bmSkipped };
 }
 
-export async function importUserDataJSON(jsonString: string): Promise<{ categoriesImported: number; bookmarksImported: number }> {
+export async function importUserDataJSON(
+  jsonString: string,
+): Promise<{ categoriesImported: number; bookmarksImported: number; bookmarksSkipped: number }> {
   return importUserData(jsonString);
 }

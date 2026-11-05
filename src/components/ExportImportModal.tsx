@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { exportUserDataJSON, downloadJSONFile, importUserData, clearAllData } from '../utils/exportImport';
+import { useModalA11y } from '../hooks/useModalA11y';
 import { X, Download, Upload, CheckCircle, AlertCircle, FileCode, Trash2, RefreshCw } from 'lucide-react';
 
 interface ExportImportModalProps {
@@ -16,6 +17,8 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [clearBeforeImport, setClearBeforeImport] = useState(false);
+
+  const dialogRef = useModalA11y(isOpen, onClose);
 
   if (!isOpen) return null;
 
@@ -42,9 +45,12 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
       try {
         const content = event.target?.result as string;
         const result = await importUserData(content, file.name, clearBeforeImport);
+        const skippedNote = result.bookmarksSkipped > 0
+          ? ` ${result.bookmarksSkipped} duplicate${result.bookmarksSkipped === 1 ? '' : 's'} skipped.`
+          : '';
         setStatusMessage({
           type: 'success',
-          text: `Import successful! Added ${result.bookmarksImported} bookmarks and ${result.categoriesImported} categories.`,
+          text: `Import successful! Added ${result.bookmarksImported} bookmarks and ${result.categoriesImported} categories.${skippedNote}`,
         });
         onDataImported();
       } catch (err: unknown) {
@@ -71,8 +77,18 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-      <div className="w-full max-w-md glass-panel rounded-2xl border border-slate-700/80 shadow-2xl p-6 relative">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Backup and data tools"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md glass-panel rounded-2xl border border-slate-700/80 shadow-2xl p-6 relative"
+      >
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
@@ -84,7 +100,9 @@ export const ExportImportModal: React.FC<ExportImportModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />

@@ -1,11 +1,13 @@
 import React from 'react';
-import { Search, FolderPlus, Bookmark, Download, Sun, Moon } from 'lucide-react';
+import { Search, FolderPlus, Bookmark, Download, Sun, Moon, Menu, Command } from 'lucide-react';
 
 interface NavbarProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onOpenAddCategory: () => void;
   onOpenExportImport: () => void;
+  onOpenPalette: () => void;
+  onToggleSidebar: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
   totalBookmarks: number;
@@ -16,6 +18,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSearchChange,
   onOpenAddCategory,
   onOpenExportImport,
+  onOpenPalette,
+  onToggleSidebar,
   theme,
   onToggleTheme,
   totalBookmarks,
@@ -26,6 +30,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Brand Logo & Title */}
         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
           <div className="flex items-center gap-2.5">
+            <button
+              onClick={onToggleSidebar}
+              aria-label="Toggle subjects menu"
+              title="Toggle subjects menu"
+              className="md:hidden p-2 rounded-xl glass-card text-slate-300 hover:text-white transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-indigo-500/25">
               <Bookmark className="w-5 h-5 text-white" />
               <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-cyan-400 animate-pulse" />
@@ -45,6 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={onToggleTheme}
               className="p-2 rounded-xl glass-card text-amber-400 hover:text-amber-300 transition-colors"
               title="Toggle Light/Dark Theme"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4 text-indigo-600" />}
             </button>
@@ -57,10 +70,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Search className="w-4 h-4" />
           </div>
           <input
+            id="global-search"
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search bookmarks by title, URL, tag, or domain..."
+            aria-label="Search bookmarks"
             className="w-full glass-input pl-10 pr-10 py-2.5 rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
           />
           {searchQuery && (
@@ -75,11 +90,23 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Action Buttons */}
         <div className="hidden md:flex items-center gap-3">
+          {/* Command Palette */}
+          <button
+            onClick={onOpenPalette}
+            className="px-3 py-2.5 rounded-xl text-xs font-semibold glass-card hover:border-slate-500 transition-all flex items-center gap-2 text-slate-300"
+            title="Command palette (⌘K / Ctrl+K)"
+            aria-label="Open command palette"
+          >
+            <Command className="w-4 h-4 text-indigo-400" />
+            <kbd className="font-mono text-[10px] text-slate-400">⌘K</kbd>
+          </button>
+
           {/* Light / Dark Mode Toggle */}
           <button
             onClick={onToggleTheme}
             className="p-2.5 rounded-xl text-xs font-semibold glass-card hover:border-slate-500 transition-all flex items-center justify-center text-amber-400"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           >
             {theme === 'dark' ? (
               <Sun className="w-4 h-4 text-amber-400" />

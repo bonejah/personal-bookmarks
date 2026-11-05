@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import type { Category, Bookmark } from '../types/bookmark';
 import { parseUrlMetadata } from '../utils/urlParser';
-import { X, Link2, Sparkles, Tag, FileText, Check } from 'lucide-react';
+import { useModalA11y } from '../hooks/useModalA11y';
+import { X, Link2, Sparkles, Tag, FileText, Check, AlertTriangle } from 'lucide-react';
 import { CategoryIcon } from './CategoryIcon';
 
 interface AddBookmarkModalProps {
@@ -9,7 +10,7 @@ interface AddBookmarkModalProps {
   onClose: () => void;
   categories: Category[];
   defaultCategorySlug?: string;
-  onSaveBookmark: (bm: Omit<Bookmark, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onSaveBookmark: (bm: Omit<Bookmark, 'id' | 'createdAt' | 'updatedAt'>) => Promise<boolean>;
 }
 
 export const AddBookmarkModal: React.FC<AddBookmarkModalProps> = ({
@@ -21,13 +22,17 @@ export const AddBookmarkModal: React.FC<AddBookmarkModalProps> = ({
 }) => {
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
+  const [titleTouched, setTitleTouched] = useState(false);
   const [categorySlug, setCategorySlug] = useState(defaultCategorySlug);
   const [description, setDescription] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [isAutoParsed, setIsAutoParsed] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState(false);
 
   // Live parsed state
   const [parsedMeta, setParsedMeta] = useState<ReturnType<typeof parseUrlMetadata> | null>(null);
+
+  const dialogRef = useModalA11y(isOpen, onClose);
 
   useEffect(() => {
     if (defaultCategorySlug && defaultCategorySlug !== 'all') {
@@ -39,10 +44,14 @@ export const AddBookmarkModal: React.FC<AddBookmarkModalProps> = ({
 
   const handleUrlChange = (input: string) => {
     setUrl(input);
+    setDuplicateWarning(false);
     if (input.trim().length > 4) {
       const meta = parseUrlMetadata(input);
       setParsedMeta(meta);
-      setTitle(meta.title);
+      // Only auto-fill the title while the user hasn't edited it themselves.
+      if (!titleTouched) {
+        setTitle(meta.title);
+      }
       if (meta.suggestedCategorySlug && meta.suggestedCategorySlug !== 'general') {
         const catExists = categories.some((c) => c.slug === meta.suggestedCategorySlug);
         if (catExists) {
@@ -56,7 +65,7 @@ export const AddBookmarkModal: React.FC<AddBookmarkModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) return;
 
@@ -66,7 +75,7 @@ export const AddBookmarkModal: React.FC<AddBookmarkModalProps> = ({
       .map((t) => t.trim())
       .filter(Boolean);
 
-    onSaveBookmark({
+    const saved = await onSaveBookmark({
       url: finalMeta.url,
       title: title.trim() || finalMeta.title,
       domain: finalMeta.domain,
@@ -80,18 +89,35 @@ export const AddBookmarkModal: React.FC<AddBookmarkModalProps> = ({
       isPinned: false,
     });
 
+    if (!saved) {
+      setDuplicateWarning(true);
+      return;
+    }
+
     // Reset & Close
     setUrl('');
     setTitle('');
+    setTitleTouched(false);
     setDescription('');
     setTagsInput('');
     setParsedMeta(null);
+    setDuplicateWarning(false);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-      <div className="w-full max-w-xl glass-panel rounded-2xl border border-slate-700/80 shadow-2xl p-6 relative">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add new bookmark"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-xl glass-panel rounded-2xl border border-slate-700/80 shadow-2xl p-6 relative"
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -104,7 +130,9 @@ export const AddBookmarkModal: React.FC<AddBookmarkModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -171,7 +199,10 @@ export const AddBookmarkModal: React.FC<AddBookmarkModalProps> = ({
               type="text"
               required
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setTitleTouched(true);
+              }}
               placeholder="e.g. Channel Name, Project Name, Article Title"
               className="w-full glass-input px-4 py-2.5 rounded-xl text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
@@ -238,6 +269,17 @@ export const AddBookmarkModal: React.FC<AddBookmarkModalProps> = ({
               className="w-full glass-input px-4 py-2 rounded-xl text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
+
+          {/* Duplicate URL warning */}
+          {duplicateWarning && (
+            <div
+              role="alert"
+              className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs font-medium text-amber-300"
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>This URL is already saved in your bookmarks.</span>
+            </div>
+          )}
 
           {/* Submit Button */}
           <div className="pt-3 border-t border-slate-800 flex justify-end gap-3">
