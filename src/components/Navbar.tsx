@@ -25,7 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   totalBookmarks,
 }) => {
   return (
-    <header className="sticky top-0 z-40 w-full glass-panel border-b px-4 sm:px-8 py-3.5 transition-colors">
+    <header className="sticky top-0 z-40 w-full glass-panel border-b px-4 sm:px-8 py-3.5">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Brand Logo & Title */}
         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
